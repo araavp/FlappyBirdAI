@@ -25,7 +25,6 @@ PIPE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "pi
 BASE_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "base.png")))
 BACKGROUND_IMG = pygame.transform.scale2x(pygame.image.load(os.path.join("images", "bg.png")))
 
-# Loads font used in the game
 STAT_FONT = pygame.font.SysFont("comicsans", 50)
 
 
@@ -277,7 +276,88 @@ class Background:
 
 
 class Score:
-    
+    # Initializes score
+    score = 0
+    # Loads font used in the game
+    STAT_FONT = pygame.font.SysFont("comicsans", 50)
+
+    # Resets the score at the beginning of the game
+    def reset_score(self):
+        self.score = 0
+
+    # Returns the current score
+    def get_score(self):
+        return self.score
+
+    # Adds a point to score
+    def add_point(self):
+        self.score += 1
+
+    # Returns the score text needed to display in game screen
+    def get_score_text(self):
+        return self.STAT_FONT.render("Score: {0}".format(str(self.score)), 1, (255, 255, 255))
+
+    # Draws the score in the game window
+    def draw(self, window):
+        window.blit(self.get_score_text(), (WINDOW_WIDTH - 10 - self.get_score_text().get_width(), 10))
+
+
+class Generation:
+    # Initializes generation number
+    generation = 0
+    # Loads font used in the game
+    STAT_FONT = pygame.font.SysFont("comicsans", 50)
+
+    # Resets the number of generation at the beginning of the game
+    def reset_generation(self):
+        self.generation = 0
+
+    # Returns the current score
+    def get_generation(self):
+        return self.generation
+
+    # Adds another generation
+    def add_generation(self):
+        self.generation += 1
+
+    # Returns the generation text needed to display in game screen
+    def get_generation_text(self):
+        return self.STAT_FONT.render("Generation: {0}".format(str(self.generation)), 1, (255,255,255))
+
+    # Displays the generation counter in the top left
+    def draw(self, window):
+        window.blit(self.get_generation_text(), (10, 10))
+
+
+class NumBirds:
+    # Loads font used in the game
+    STAT_FONT = pygame.font.SysFont("comicsans", 50)
+
+    # Initializes class
+    def __init__(self, num_birds):
+        # Initializes number of birds
+        self.num_birds = num_birds
+
+    # Resets the number of birds at the beginning of each new generation
+    def reset_num_birds(self):
+        self.num_birds = 0
+
+    # Returns the current number of birds
+    def get_num_birds(self):
+        return self.num_birds
+
+    # Removes a bird from the number of birds in the current generation
+    def remove_bird(self):
+        self.num_birds -= 1
+
+    # Returns the number of birds text needed to display in game screen
+    def get_num_birds_text(self):
+        return self.STAT_FONT.render("Birds Left: {0}".format(str(self.num_birds)), 1, (255,255,255))
+
+    # Draws the number of birds text in the game window
+    def draw(self, window):
+        window.blit(self.get_num_birds_text(), (10, 50))
+
 
 # Draws all the images in the window
 def draw_window(window, birds, pipes, base, background, score, generation, num_birds):
@@ -288,24 +368,14 @@ def draw_window(window, birds, pipes, base, background, score, generation, num_b
     for pipe in pipes:
         pipe.draw(window)
 
-    # Has a score counter that increments each time the bird passes through a pipe
-    score_counter = STAT_FONT.render("Score: {0}".format(str(score)), 1, (255,255,255))
-
     # Displays the score counter in the top right
-    window.blit(score_counter, (WINDOW_WIDTH - 10 - score_counter.get_width(), 10))
-
-    # Has a generation counter that increments once all the birds of the previous generation died and the birds of the
-    # new generation spawn
-    generation_counter = STAT_FONT.render("Generation: {0}".format(str(generation)), 1, (255,255,255))
+    score.draw(window)
 
     # Displays the generation counter in the top left
-    window.blit(generation_counter, (10, 10))
-
-    # Has a bird counter that shows the number of remaining birds in the given generation
-    bird_counter = STAT_FONT.render("Birds Left: {0}".format(str(num_birds)), 1, (255,255,255))
+    generation.draw(window)
 
     # Displays the bird counter in the top left, under the generation counter
-    window.blit(bird_counter, (10, 50))
+    num_birds.draw(window)
 
     # Draws the base on the window
     base.draw(window)
@@ -318,16 +388,20 @@ def draw_window(window, birds, pipes, base, background, score, generation, num_b
     pygame.display.update()
 
 
-def main(genomes, config):
-    # Global variables to count the number of generations and the number of birds left
-    global GENERATION, NUM_BIRDS
+# Creates a generation class
+game_generation = Generation()
 
+
+def main(genomes, config):
     # Generation increases by one each time all the birds in the previous generation die
-    GENERATION += 1
+    game_generation.add_generation()
 
     # Defines position of the window and background image
     window = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
     background = Background(0)
+
+    # Creates a score class
+    game_score = Score()
 
     # Initialize variables needed for NEAT
     neural_networks = []
@@ -349,15 +423,15 @@ def main(genomes, config):
         # Append genome to list of genomes
         genome_birds.append(genome)
 
-    # Finds number of total birds in the generation
-    NUM_BIRDS = len(birds)
+    # Finds number of total birds in the generation and creates a NumBird class
+    num_birds = NumBirds(len(birds))
 
     # Defines position of the base and pipes images
     base = Base(730)
     pipes = [Pipe(600)]
 
     # Starts the score as 0 at the beginning of the game
-    score = 0
+    game_score.reset_score()
 
     # Starts timer
     clock = pygame.time.Clock()
@@ -430,7 +504,7 @@ def main(genomes, config):
                     genome_birds.pop(x)
 
                     # Updates bird counter with how many birds are left
-                    NUM_BIRDS -= 1
+                    num_birds.remove_bird()
 
                 # Updates that birds have passed the pipe and creates a new pipe on the window
                 if not pipe.passed and pipe.x < bird.x:
@@ -447,7 +521,7 @@ def main(genomes, config):
         # Effect of bird passing through the pipe and surviving
         if add_pipe:
             # Updates score counter
-            score += 1
+            game_score.add_point()
 
             # Loops through birds that have passed through the pipe successfully
             for gb in genome_birds:
@@ -472,17 +546,17 @@ def main(genomes, config):
                 genome_birds.pop(x)
 
                 # Updates bird counter with how many birds are left
-                NUM_BIRDS -= 1
+                num_birds.remove_bird()
 
         # Moves the base and background to the left
         base.move()
         background.move()
 
         # Draws all the objects in the screen view
-        draw_window(window, birds, pipes, base, background, score, GENERATION, NUM_BIRDS)
+        draw_window(window, birds, pipes, base, background, game_score, game_generation, num_birds)
 
         # Stops the game if the score has surpassed 30 because the neural network has created a perfect bird
-        if score > 30:
+        if game_score.get_score() > 30:
             # Saves the neural network that performed the best so the user does not have to train the model again
             pickle.dump(neural_networks[0], open("best_flappybird.pickle", "wb"))
             break
